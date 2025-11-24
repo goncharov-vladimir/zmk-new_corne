@@ -1,3 +1,0 @@
-[submodule "modules/zmk-ws2812-driver"]
-	path = modules/zmk-ws2812-driver
-	url = https://github.com/gohanda11/zmk-ws2812-driver
