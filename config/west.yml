@@ -14,5 +14,8 @@ manifest:
       remote: zmkfirmware
       revision: v0.3.0
       import: app/west.yml
+    - name: zmk-ws2812-driver
+      path: modules/zmk-ws2812-driver
+      revision: main
   self:
     path: config
