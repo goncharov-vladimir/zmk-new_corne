@@ -1,4 +1,13 @@
 name: Draw Keymap
+
+# Standalone version of keymap-drawer's draw-zmk workflow:
+# - no `west update`: the parser doesn't need the west modules, and west can't
+#   clone into the partly committed modules/zmk-ws2812-driver anyway;
+# - only config/eyelash_corne.keymap: eyelash_corne_dongle.keymap just
+#   includes it and has no physical layout of its own;
+# - pinned versions: keymap-drawer 0.21.0 breaks with the latest
+#   tree-sitter (0.25+) / tree-sitter-devicetree (0.15) that pip resolves.
+
 on:
   workflow_dispatch:
   push:
@@ -9,10 +18,26 @@ on:
 
 jobs:
   draw:
-    uses: caksoylar/keymap-drawer/.github/workflows/draw-zmk.yml@main
+    runs-on: ubuntu-latest
     permissions:
       contents: write
-    with:
-      commit_message: "[Draw] ${{ github.event.head_commit.message }}"
-      destination: "commit"
-      fail_on_error: ${{ fromJSON(true) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install keymap-drawer
+        run: >-
+          pipx install keymap-drawer==0.21.0 &&
+          pipx inject keymap-drawer tree-sitter==0.24.0 tree-sitter-devicetree==0.14.1
+
+      - name: Draw keymap
+        run: |
+          mkdir -p keymap-drawer
+          keymap -c keymap_drawer.config.yaml parse -z config/eyelash_corne.keymap > keymap-drawer/eyelash_corne.yaml
+          keymap -c keymap_drawer.config.yaml draw keymap-drawer/eyelash_corne.yaml -j config/eyelash_corne.json > keymap-drawer/eyelash_corne.svg
+
+      - name: Commit updated drawing
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "[Draw] ${{ github.event.head_commit.message }}"
+          file_pattern: "keymap-drawer/*.svg keymap-drawer/*.yaml"
