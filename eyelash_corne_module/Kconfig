@@ -1,0 +1,19 @@
+# eyelash_corne module Kconfig
+# SPDX-License-Identifier: MIT
+
+config ZMK_SPLIT_REMOTE_SENSORS
+    bool "Receive keymap sensors from split peripherals"
+    depends on ZMK_SPLIT_ROLE_CENTRAL
+    default n
+
+config ZMK_SPLIT_REMOTE_SENSOR_COUNT
+    int "Number of remote keymap sensors"
+    depends on ZMK_SPLIT_REMOTE_SENSORS
+    range 1 8
+    default 1
+
+config ZMK_SPLIT_REMOTE_SENSOR_TRIGGERS_PER_ROTATION
+    int "Remote encoder triggers per rotation"
+    depends on ZMK_SPLIT_REMOTE_SENSORS
+    range 1 360
+    default 15

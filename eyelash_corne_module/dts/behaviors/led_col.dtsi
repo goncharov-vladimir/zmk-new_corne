@@ -1,0 +1,16 @@
+/*
+ * LED color-scan behavior — cycle the color of the currently scanned LED.
+ *
+ * Usage in keymap:  &led_col <direction>
+ *   direction: 1 = next color, -1 = previous color (wraps 0..8)
+ *   color codes: 0=off 1=red 2=green 3=blue 4=white 5=yellow 6=cyan
+ *                7=magenta 8=orange
+ */
+/ {
+	behaviors {
+		led_col: lcol {
+			compatible = "zmk,behavior-led-col";
+			#binding-cells = <1>;
+		};
+	};
+};

@@ -1,0 +1,17 @@
+/*
+ * WS2812 layer behavior — invoked by the central on layer changes.
+ * The central detects layer changes and invokes &ws2812_layer <layer_number>
+ * with BEHAVIOR_LOCALITY_GLOBAL, which relays the layer number to all
+ * peripherals.  Both central and peripheral handlers then call
+ * ws2812_set_layer_color(layer_number) to update their LEDs.
+ */
+/ {
+	behaviors {
+		ws2812_layer: ws2812_layer_behavior {
+			compatible = "zmk,behavior-ws2812-widget";
+			#binding-cells = <1>;
+			label = "WS2812L";
+			indicate-layer;
+		};
+	};
+};

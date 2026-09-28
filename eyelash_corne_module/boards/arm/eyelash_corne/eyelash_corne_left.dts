@@ -10,3 +10,9 @@
 &left_encoder {
     status = "okay";
 };
+
+/ {
+    chosen {
+        zmk,ws2812-widget = &led_strip;
+    };
+};

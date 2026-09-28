@@ -1,0 +1,20 @@
+/*
+ * LED index-scan behavior — move the LED-scan cursor and light it up.
+ *
+ * Usage in keymap:  &led_idx <direction>
+ *   direction: 1 = next LED, -1 = previous LED (wraps 0..N-1)
+ *
+ * Meant to be driven by an encoder (see led_idx_encoder in the keymap) so
+ * you can step through every physical LED live and note which key it sits
+ * under, instead of guessing masks and reflashing for every index.
+ */
+/ {
+	behaviors {
+		/* Имя ноды ≤8 символов: DEVICE_DT_NAME уходит в BLE split-relay
+		 * (буфер 9 байт). */
+		led_idx: lidx {
+			compatible = "zmk,behavior-led-idx";
+			#binding-cells = <1>;
+		};
+	};
+};

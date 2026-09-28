@@ -1,17 +1,30 @@
+# Dongle setup: nice_nano_v2 = central, both halves = peripherals.
+# Flash order: settings_reset → dongle → left → right.
 ---
 include:
-#  - board: eyelash_corne_left
-#    shield: nice_view
-#    #snippet: zmk-usb-logging    # Uncomment to log over USB.
-  - board: eyelash_corne_right
-    shield: nice_view
-    #snippet: zmk-usb-logging
+  # ── Dongle (central) + OLED display ──
+  - board: nice_nano_v2
+    shield: eyelash_corne_dongle dongle_display
+    artifact-name: nice_nano_v2_dongle
+
+  # ZMK Studio variant (uncomment when needed):
+  # - board: nice_nano_v2
+  #   shield: eyelash_corne_dongle dongle_display
+  #   snippet: studio-rpc-usb-uart
+  #   cmake-args: -DCONFIG_ZMK_STUDIO=y -DCONFIG_ZMK_STUDIO_LOCKING=n
+  #   artifact-name: nice_nano_v2_dongle_studio
+
+  # ── Keyboard halves (peripherals) ──
   - board: eyelash_corne_left
     shield: nice_view
-    snippet: studio-rpc-usb-uart
-    cmake-args: -DCONFIG_ZMK_STUDIO=y -DCONFIG_ZMK_STUDIO_LOCKING=n
-    artifact-name: eyelash_corne_studio_left
+    cmake-args: -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n
+    artifact-name: eyelash_corne_left
+
+  - board: eyelash_corne_right
+    shield: nice_view
+    artifact-name: eyelash_corne_right
+
+  # ── Settings reset ──
   - board: nice_nano_v2
     shield: settings_reset
-    #snippet: zmk-usb-logging
- 
+    artifact-name: settings_reset

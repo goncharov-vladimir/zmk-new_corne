@@ -1,0 +1,5 @@
+description: Step the LED-scan test cursor to the next/previous LED index and light it.
+
+compatible: "zmk,behavior-led-idx"
+
+include: one_param.yaml

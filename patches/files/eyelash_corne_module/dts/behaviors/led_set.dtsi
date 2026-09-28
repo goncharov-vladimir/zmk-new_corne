@@ -1,0 +1,19 @@
+/*
+ * LED set behavior — set a specific LED to a color without clearing others.
+ *
+ * Usage in keymap:  &led_set <led_index> <color_code>
+ *   led_index:  0-based LED position on the strip (0–20), or 255 to clear all
+ *   color_code: 0=off, 1=red, 2=green, 3=blue, 4=white,
+ *               5=yellow, 6=cyan, 7=magenta, 8=orange
+ *
+ * Example:  &led_set 3 2   → set LED 3 to green (other LEDs unchanged)
+ *           &led_set 255 0 → clear all LEDs, resume animation
+ */
+/ {
+	behaviors {
+		led_set: led_set_behavior {
+			compatible = "zmk,behavior-led-set";
+			#binding-cells = <2>;
+		};
+	};
+};

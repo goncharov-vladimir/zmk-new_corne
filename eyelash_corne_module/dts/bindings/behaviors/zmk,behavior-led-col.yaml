@@ -1,0 +1,5 @@
+description: Cycle the color code of the LED-scan test cursor's current LED.
+
+compatible: "zmk,behavior-led-col"
+
+include: one_param.yaml

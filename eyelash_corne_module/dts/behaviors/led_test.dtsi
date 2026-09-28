@@ -1,0 +1,22 @@
+/*
+ * LED test behavior — lights up a specific LED index with a color code.
+ *
+ * Usage in keymap:  &led_test <led_index> <color_code>
+ *   led_index:  0-based LED position on the strip
+ *   color_code: 0=off, 1=red, 2=green, 3=blue, 4=white,
+ *               5=yellow, 6=cyan, 7=magenta, 8=orange
+ *
+ * Example:  &led_test 3 4   → light LED 3 white
+ */
+/ {
+	behaviors {
+		/* label ≤8 символов: DEVICE_DT_NAME уходит в BLE split-relay
+		 * (буфер 9 байт). Имя ноды (18 симв.) без label обрезается при
+		 * релее и не находится на периферии — см. led_set.dtsi/led_idx.dtsi. */
+		led_test: led_test_behavior {
+			compatible = "zmk,behavior-led-test";
+			#binding-cells = <2>;
+			label = "LEDTEST";
+		};
+	};
+};

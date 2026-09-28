@@ -1,0 +1,2 @@
+config SHIELD_EYELASH_CORNE_DONGLE
+	def_bool $(shields_list_contains,eyelash_corne_dongle)

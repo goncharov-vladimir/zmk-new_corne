@@ -117,6 +117,22 @@ parse_config:
     type: trans
 
   raw_binding_map:
+    # Custom keyboard controls
+    "&td0":
+      tap: $$mdi:apple-keyboard-shift$$
+      hold: $$mdi:alpha-w-box$$
+      type: tap_dance
+    "&td_lang":
+      tap: $$mdi:apple-keyboard-option$$
+      hold: LANG
+      type: tap_dance
+    "&ws2812_wdg 254":
+      tap: $$mdi:lightbulb-on-outline$$
+      hold: LED
+    "&ws2812_wdg 0xFF": LED AUTO
+    "&ws2812_wdg 253": DISPLAY ROTATE
+    "&soft_off": $$mdi:power-standby$$
+
     # Layers
     "&ltq 1 BACKSPACE":
       tap:  $$mdi:backspace$$
@@ -318,8 +334,12 @@ parse_config:
     SQT:
       tap: "'"
       shifted: '"'
-    APOSTROPHE: <
-    APOS: .
+    APOSTROPHE:
+      tap: "'"
+      shifted: '"'
+    APOS:
+      tap: "'"
+      shifted: '"'
     DOUBLE_QUOTES: '"'
     DQT: '"'
 
@@ -411,6 +431,7 @@ parse_config:
     RSHFT: $$mdi:apple-keyboard-shift$$
     RCMD: $$mdi:apple-keyboard-command$$
     RG: $$mdi:apple-keyboard-command$$
+    RIGHT_GUI: $$mdi:apple-keyboard-command$$
     PSCRN: $$mdi:printer-outline$$
     RIGHT_COMMAND: $$mdi:apple-keyboard-command$$
     PAGE_UP:

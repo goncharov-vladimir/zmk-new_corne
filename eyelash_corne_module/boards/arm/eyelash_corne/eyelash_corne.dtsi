@@ -220,10 +220,11 @@ nice_view_spi: &spi0 {
 
         /* SPI */
         reg = <0>; /* ignored, but necessary for SPI bindings */
+        /* Factory timing used by the Eyelash Corne board definition. */
         spi-max-frequency = <4000000>;
 
-        /* WS2812 */
-        chain-length = <21>;
+        /* Several physical row chains share one input: six column addresses. */
+        chain-length = <6>;
         spi-one-frame = <0x70>;
         spi-zero-frame = <0x40>;
 

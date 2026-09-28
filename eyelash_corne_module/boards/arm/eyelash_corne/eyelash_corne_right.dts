@@ -10,3 +10,9 @@
 &default_transform {
     col-offset = <7>;
 };
+
+/ {
+    chosen {
+        zmk,ws2812-widget = &led_strip;
+    };
+};

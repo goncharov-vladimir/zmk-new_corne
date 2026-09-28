@@ -1,0 +1,5 @@
+description: LED set behavior — set a single LED color without clearing others. Use &led_set 255 0 to clear all and resume animation.
+
+compatible: "zmk,behavior-led-set"
+
+include: two_param.yaml

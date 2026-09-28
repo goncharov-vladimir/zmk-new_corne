@@ -1,0 +1,5 @@
+description: LED test behavior for WS2812 strip
+
+compatible: "zmk,behavior-led-test"
+
+include: two_param.yaml
