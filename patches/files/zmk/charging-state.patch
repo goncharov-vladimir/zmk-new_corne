@@ -1,0 +1,67 @@
+diff --git a/app/module/drivers/sensor/battery/battery_nrf_vddh.c b/app/module/drivers/sensor/battery/battery_nrf_vddh.c
+index 32c7c61e..84f6c0a3 100644
+--- a/app/module/drivers/sensor/battery/battery_nrf_vddh.c
++++ b/app/module/drivers/sensor/battery/battery_nrf_vddh.c
+@@ -15,13 +15,17 @@
+ #include <zephyr/drivers/sensor.h>
+ #include <zephyr/logging/log.h>
+ 
++#include <hal/nrf_power.h>
++
+ #include "battery_common.h"
+ 
+ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
+ 
+ #define VDDHDIV (5)
++#define ZMK_BATTERY_CHARGING_FLAG BIT(7)
+ 
+ static const struct device *adc = DEVICE_DT_GET(DT_NODELABEL(adc));
++static uint8_t last_battery_soc;
+ 
+ struct vddh_data {
+     struct adc_channel_cfg acc;
+@@ -56,7 +60,19 @@ static int vddh_sample_fetch(const struct device *dev, enum sensor_channel chan)
+     }
+ 
+     drv_data->value.millivolts = val * VDDHDIV;
+-    drv_data->value.state_of_charge = lithium_ion_mv_to_pct(drv_data->value.millivolts);
++    uint8_t measured_soc = lithium_ion_mv_to_pct(drv_data->value.millivolts);
++
++#if IS_ENABLED(CONFIG_ZMK_SPLIT) && !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
++    /* VDDH reads the USB rail while charging, so its calculated 100% is not battery SOC. */
++    if (nrf_power_usbregstatus_vbusdet_get(NRF_POWER)) {
++        drv_data->value.state_of_charge = ZMK_BATTERY_CHARGING_FLAG | last_battery_soc;
++    } else {
++        last_battery_soc = measured_soc;
++        drv_data->value.state_of_charge = measured_soc;
++    }
++#else
++    drv_data->value.state_of_charge = measured_soc;
++#endif
+ 
+     LOG_DBG("ADC raw %d ~ %d mV => %d%%", drv_data->value.adc_raw, drv_data->value.millivolts,
+             drv_data->value.state_of_charge);
+diff --git a/app/src/split/bluetooth/central_bas_proxy.c b/app/src/split/bluetooth/central_bas_proxy.c
+index 3e89fb0b..6f85460f 100644
+--- a/app/src/split/bluetooth/central_bas_proxy.c
++++ b/app/src/split/bluetooth/central_bas_proxy.c
+@@ -39,6 +39,9 @@ static ssize_t read_blvl(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+         return 0;
+     }
+ 
++    /* Strip the private charging flag before exposing BAS to the host. */
++    level &= 0x7F;
++
+     return bt_gatt_attr_read(conn, attr, buf, len, offset, &level, sizeof(uint8_t));
+ }
+ 
+@@ -86,7 +89,8 @@ int peripheral_batt_lvl_listener(const zmk_event_t *eh) {
+     // on.
+     int index = (PERIPH_BATT_LEVEL_ATTR_COUNT * ev->source) + PERIPH_BATT_LEVEL_ATTR_NOTIFY_IDX;
+ 
+-    int rc = bt_gatt_notify(NULL, &bas_aux.attrs[index], &ev->state_of_charge, sizeof(uint8_t));
++    uint8_t host_level = ev->state_of_charge & 0x7F;
++    int rc = bt_gatt_notify(NULL, &bas_aux.attrs[index], &host_level, sizeof(host_level));
+     if (rc < 0 && rc != -ENOTCONN) {
+         LOG_WRN("Failed to notify hosts of peripheral battery level: %d", rc);
+     }

@@ -1,10 +1,139 @@
 name: Build ZMK firmware
+
+# Same steps as `make init` + `make build`, so the cloud build matches the
+# local one: west update, then patches/apply.py (Zephyr/ZMK/module patches and
+# the local ws2812 driver sources), then one build per entry in build.yaml.
+# ZMK's reusable build-user-config workflow can't run apply.py, so this is a
+# standalone workflow.
+
 on:
   workflow_dispatch:
   push:
     paths-ignore:
       - "keymap-drawer/**"
+  pull_request:
+    paths-ignore:
+      - "keymap-drawer/**"
 
 jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    name: Fetch build matrix
+    outputs:
+      build_matrix: ${{ env.build_matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch build matrix
+        run: |
+          echo "build_matrix=$(yq -oj -I0 build.yaml)" >> $GITHUB_ENV
+          yq -oj build.yaml
+
   build:
-    uses: zmkfirmware/zmk/.github/workflows/build-user-config.yml@main
+    runs-on: ubuntu-latest
+    # ZMK v0.3 is on Zephyr 3.5; `stable` has moved on to newer Zephyr/SDKs.
+    container:
+      image: zmkfirmware/zmk-build-arm:3.5-branch
+    needs: matrix
+    name: Build
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrix.outputs.build_matrix) }}
+    env:
+      display_name: ${{ matrix.artifact-name || matrix.board }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare variables
+        shell: sh -x {0}
+        env:
+          board: ${{ matrix.board }}
+          shield: ${{ matrix.shield }}
+          artifact_name: ${{ matrix.artifact-name }}
+          snippet: ${{ matrix.snippet }}
+        run: |
+          echo "build_dir=$(mktemp -d)" >> $GITHUB_ENV
+          if [ -n "${snippet}" ]; then
+            echo "extra_west_args=-S \"${snippet}\"" >> $GITHUB_ENV
+          fi
+          echo "artifact_name=${artifact_name:-${shield:+$shield-}${board}-zmk}" >> $GITHUB_ENV
+
+      - name: Cache west modules
+        uses: actions/cache@v4
+        continue-on-error: true
+        with:
+          path: |
+            zmk/
+            zephyr/
+            modules/
+            tools/
+            bootloader/
+            zmk-dongle-display/
+          # Patched trees are cached, so any change to the patches invalidates it.
+          key: ${{ runner.os }}-zmk-west-${{ hashFiles('config/west.yml', 'patches/**') }}
+
+      - name: West init
+        run: |
+          git config --global --add safe.directory '*'
+          west init -l config
+
+      - name: West update
+        run: |
+          # modules/zmk-ws2812-driver is partly committed to this repo, which
+          # stops west from cloning into it. apply.py restores the local
+          # sources from patches/files right after the update.
+          if [ ! -d modules/zmk-ws2812-driver/.git ]; then
+            rm -rf modules/zmk-ws2812-driver
+          fi
+          west update --fetch-opt=--filter=tree:0
+
+      - name: West Zephyr export
+        run: west zephyr-export
+
+      - name: Apply local patches
+        run: python3 patches/apply.py
+
+      - name: West build (${{ env.display_name }})
+        shell: sh -x {0}
+        run: >-
+          west build -p -s zmk/app -d "${{ env.build_dir }}" -b "${{ matrix.board }}"
+          ${{ env.extra_west_args }} --
+          -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
+          -DZMK_EXTRA_MODULES="${GITHUB_WORKSPACE}/eyelash_corne_module;${GITHUB_WORKSPACE}/modules/zmk-ws2812-driver"
+          ${{ matrix.shield && format('-DSHIELD="{0}"', matrix.shield) || '' }}
+          ${{ matrix.cmake-args }}
+
+      - name: ${{ env.display_name }} Kconfig file
+        if: ${{ !cancelled() }}
+        run: |
+          if [ -f "${{ env.build_dir }}/zephyr/.config" ]; then
+            grep -v -e "^#" -e "^$" "${{ env.build_dir }}/zephyr/.config" | sort
+          else
+            echo "No Kconfig output"
+          fi
+
+      - name: Rename artifacts
+        shell: sh -x {0}
+        run: |
+          mkdir "${{ env.build_dir }}/artifacts"
+          cp "${{ env.build_dir }}/zephyr/zmk.uf2" "${{ env.build_dir }}/artifacts/${{ env.artifact_name }}.uf2"
+
+      - name: Archive (${{ env.display_name }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifact-${{ env.artifact_name }}
+          path: ${{ env.build_dir }}/artifacts
+
+  merge:
+    runs-on: ubuntu-latest
+    needs: build
+    name: Merge output artifacts
+    steps:
+      - name: Merge artifacts
+        uses: actions/upload-artifact/merge@v4
+        with:
+          name: firmware
+          pattern: artifact-*
+          delete-merged: true

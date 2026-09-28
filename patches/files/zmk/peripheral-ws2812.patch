@@ -1,0 +1,98 @@
+diff --git a/app/src/split/peripheral.c b/app/src/split/peripheral.c
+index 4157ffa2..aee604f8 100644
+--- a/app/src/split/peripheral.c
++++ b/app/src/split/peripheral.c
+@@ -5,6 +5,7 @@
+  */
+ 
+ #include <errno.h>
++#include <string.h>
+ 
+ #include <zmk/stdlib.h>
+ #include <zmk/split/transport/peripheral.h>
+@@ -22,6 +23,64 @@
+ 
+ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
+ 
++#if IS_ENABLED(CONFIG_WS2812_WIDGET)
++#include <zmk_ws2812_widget/widget.h>
++
++static void ws2812_color_code_to_rgb(uint8_t code, uint8_t *r, uint8_t *g, uint8_t *b) {
++    switch (code) {
++    case 1: *r = 255; *g = 0;   *b = 0;   break;
++    case 2: *r = 0;   *g = 255; *b = 0;   break;
++    case 3: *r = 0;   *g = 0;   *b = 255; break;
++    case 4: *r = 255; *g = 255; *b = 255; break;
++    case 5: *r = 255; *g = 255; *b = 0;   break;
++    case 6: *r = 0;   *g = 255; *b = 255; break;
++    case 7: *r = 255; *g = 0;   *b = 255; break;
++    case 8: *r = 255; *g = 165; *b = 0;   break;
++    default: *r = 0;  *g = 0;   *b = 0;   break;
++    }
++}
++
++/* Custom LED behaviors are transported by their short device names. Handle
++ * them directly on the peripheral so LED control does not depend on the
++ * generic behavior registry lookup across independently built firmwares. */
++static int handle_ws2812_behavior(const struct zmk_behavior_binding *binding, bool pressed) {
++    const char *name = binding->behavior_dev;
++    bool is_led_behavior = strcmp(name, "WS2812L") == 0 || strcmp(name, "LEDTEST") == 0 ||
++                           strcmp(name, "lds") == 0 || strcmp(name, "lidx") == 0 ||
++                           strcmp(name, "lcol") == 0;
++
++    if (!is_led_behavior) {
++        return -ENOENT;
++    }
++    if (!pressed) {
++        return 0;
++    }
++
++    if (strcmp(name, "WS2812L") == 0) {
++        ws2812_set_layer_color((uint8_t)binding->param1);
++    } else if (strcmp(name, "LEDTEST") == 0) {
++        uint8_t r, g, b;
++        ws2812_color_code_to_rgb((uint8_t)binding->param2, &r, &g, &b);
++        ws2812_test_led((uint8_t)binding->param1, r, g, b);
++    } else if (strcmp(name, "lds") == 0) {
++        if (binding->param1 == 255) {
++            ws2812_clear_all();
++        } else {
++            uint8_t r, g, b;
++            ws2812_color_code_to_rgb((uint8_t)binding->param2, &r, &g, &b);
++            ws2812_set_pixel((uint8_t)binding->param1, r, g, b);
++        }
++    } else if (strcmp(name, "lidx") == 0) {
++        ws2812_scan_step_index((int8_t)binding->param1);
++    } else {
++        ws2812_scan_step_color((int8_t)binding->param1);
++    }
++
++    LOG_INF("Handled split LED behavior %s (%u, %u)", name, binding->param1, binding->param2);
++    return 0;
++}
++#endif
++
+ const struct zmk_split_transport_peripheral *active_transport;
+ 
+ int zmk_split_transport_peripheral_command_handler(
+@@ -41,6 +100,12 @@ int zmk_split_transport_peripheral_command_handler(
+         struct zmk_behavior_binding_event event = {.position = cmd.data.invoke_behavior.position,
+                                                    .timestamp = k_uptime_get()};
+         int err;
++#if IS_ENABLED(CONFIG_WS2812_WIDGET)
++        err = handle_ws2812_behavior(&binding, cmd.data.invoke_behavior.state > 0);
++        if (err != -ENOENT) {
++            return err;
++        }
++#endif
+         if (cmd.data.invoke_behavior.state > 0) {
+             err = behavior_keymap_binding_pressed(&binding, event);
+         } else {
+@@ -50,6 +115,7 @@ int zmk_split_transport_peripheral_command_handler(
+         if (err) {
+             LOG_ERR("Failed to invoke behavior %s: %d", binding.behavior_dev, err);
+         }
++        return err;
+     }
+     default:
+         LOG_WRN("Unhandled command type %d", cmd.type);

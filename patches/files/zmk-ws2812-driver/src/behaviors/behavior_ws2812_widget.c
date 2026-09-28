@@ -12,6 +12,8 @@
 
 #if DT_HAS_CHOSEN(zephyr_display)
 #include <zephyr/drivers/display.h>
+#include <zephyr/init.h>
+#include <zephyr/settings/settings.h>
 #include <zmk/display.h>
 #endif
 
@@ -24,7 +26,18 @@ static bool layer_hints_enabled = false;
 
 bool zmk_ws2812_hints_enabled(void) { return layer_hints_enabled; }
 
-#if DT_HAS_CHOSEN(zephyr_display)
+#if DT_HAS_CHOSEN(zephyr_display) && (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
+// Runtime 0/180 rotation of the dongle OLED. Only the central (dongle) handles
+// it: the halves' nice!view doesn't support orientation changes.
+#define DISPLAY_ROTATION_SUPPORTED 1
+
+// Rotation is persisted in settings and re-applied on boot, so the dongle keeps
+// the orientation it had before a reboot or re-plug.
+#define DISPLAY_ROTATION_BOOT_POLL_MS 100
+#define DISPLAY_ROTATION_BOOT_MAX_WAIT_MS 10000
+// Debounce flash writes when the key is pressed several times in a row.
+#define DISPLAY_ROTATION_SAVE_DELAY_MS 2000
+
 static bool display_rotated;
 
 static void rotate_display_work_cb(struct k_work *work) {
@@ -40,6 +53,60 @@ static void rotate_display_work_cb(struct k_work *work) {
 }
 
 K_WORK_DEFINE(rotate_display_work, rotate_display_work_cb);
+
+#if IS_ENABLED(CONFIG_SETTINGS)
+static void save_display_rotation_work_cb(struct k_work *work) {
+    int err = settings_save_one("ws2812_wdg/rotated", &display_rotated, sizeof(display_rotated));
+    if (err < 0) {
+        LOG_ERR("Failed to save display rotation (err %d)", err);
+    }
+}
+
+static K_WORK_DELAYABLE_DEFINE(save_display_rotation_work, save_display_rotation_work_cb);
+
+static int display_rotation_settings_set(const char *name, size_t len, settings_read_cb read_cb,
+                                         void *cb_arg) {
+    const char *next;
+    if (settings_name_steq(name, "rotated", &next) && !next) {
+        if (len != sizeof(display_rotated)) {
+            return -EINVAL;
+        }
+        int rc = read_cb(cb_arg, &display_rotated, sizeof(display_rotated));
+        return MIN(rc, 0);
+    }
+    return -ENOENT;
+}
+
+SETTINGS_STATIC_HANDLER_DEFINE(ws2812_wdg, "ws2812_wdg", NULL, display_rotation_settings_set, NULL,
+                               NULL);
+#endif // IS_ENABLED(CONFIG_SETTINGS)
+
+// The display driver re-initializes the panel in its default orientation on
+// boot, so the saved rotation has to be sent again once the display is up.
+// Settings are loaded before the display is initialized, so by then
+// display_rotated holds the saved value.
+static void restore_display_rotation_work_cb(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(restore_display_rotation_work, restore_display_rotation_work_cb);
+
+static void restore_display_rotation_work_cb(struct k_work *work) {
+    if (!zmk_display_is_initialized()) {
+        if (k_uptime_get() < DISPLAY_ROTATION_BOOT_MAX_WAIT_MS) {
+            k_work_reschedule(&restore_display_rotation_work, K_MSEC(DISPLAY_ROTATION_BOOT_POLL_MS));
+        }
+        return;
+    }
+
+    if (display_rotated) {
+        k_work_submit_to_queue(zmk_display_work_q(), &rotate_display_work);
+    }
+}
+
+static int restore_display_rotation_init(void) {
+    k_work_schedule(&restore_display_rotation_work, K_MSEC(DISPLAY_ROTATION_BOOT_POLL_MS));
+    return 0;
+}
+
+SYS_INIT(restore_display_rotation_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 #endif
 
 struct behavior_ws2812_wdg_config {
@@ -53,11 +120,14 @@ static int __maybe_unused behavior_ws2812_wdg_init(const struct device *dev) { r
 static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
                                      struct zmk_behavior_binding_event event) {
     if (binding->param1 == WS2812_WIDGET_COMMAND_DISPLAY_ROTATE) {
-#if DT_HAS_CHOSEN(zephyr_display)
+#if defined(DISPLAY_ROTATION_SUPPORTED)
         display_rotated = !display_rotated;
         if (zmk_display_is_initialized()) {
             k_work_submit_to_queue(zmk_display_work_q(), &rotate_display_work);
         }
+#if IS_ENABLED(CONFIG_SETTINGS)
+        k_work_reschedule(&save_display_rotation_work, K_MSEC(DISPLAY_ROTATION_SAVE_DELAY_MS));
+#endif
 #endif
         return ZMK_BEHAVIOR_OPAQUE;
     }
