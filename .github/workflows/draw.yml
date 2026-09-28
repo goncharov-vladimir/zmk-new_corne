@@ -26,9 +26,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install keymap-drawer
-        run: >-
-          pipx install keymap-drawer==0.21.0 &&
-          pipx inject keymap-drawer tree-sitter==0.24.0 tree-sitter-devicetree==0.14.1
+        run: |
+          # One resolve so pip actually honours the pins (pipx inject doesn't downgrade).
+          python3 -m venv "$RUNNER_TEMP/kd"
+          "$RUNNER_TEMP/kd/bin/pip" install keymap-drawer==0.21.0 tree-sitter==0.24.0 tree-sitter-devicetree==0.14.1
+          echo "$RUNNER_TEMP/kd/bin" >> "$GITHUB_PATH"
 
       - name: Draw keymap
         run: |
