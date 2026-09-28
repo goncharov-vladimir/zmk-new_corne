@@ -1,0 +1,14 @@
+diff --git a/subsys/bluetooth/services/bas.c b/subsys/bluetooth/services/bas.c
+index 189613668..537294640 100644
+--- a/subsys/bluetooth/services/bas.c
++++ b/subsys/bluetooth/services/bas.c
+@@ -84,7 +84,8 @@ int bt_bas_set_battery_level(uint8_t level)
+ {
+ 	int rc;
+ 
+-	if (level > 100U) {
++	/* Bit 7 is used internally by this split keyboard to carry charging state. */
++	if (level > 100U && (level & BIT(7)) == 0U) {
+ 		return -EINVAL;
+ 	}
+ 

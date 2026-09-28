@@ -1,0 +1,72 @@
+diff --git a/app/include/zmk/sensors.h b/app/include/zmk/sensors.h
+index 1919d4ce..1dad7c81 100644
+--- a/app/include/zmk/sensors.h
++++ b/app/include/zmk/sensors.h
+@@ -9,11 +9,15 @@
+ #include <zephyr/drivers/sensor.h>
+ 
+ #define ZMK_KEYMAP_SENSORS_NODE DT_INST(0, zmk_keymap_sensors)
+-#define ZMK_KEYMAP_HAS_SENSORS DT_NODE_HAS_STATUS(ZMK_KEYMAP_SENSORS_NODE, okay)
++#define ZMK_KEYMAP_HAS_LOCAL_SENSORS DT_NODE_HAS_STATUS(ZMK_KEYMAP_SENSORS_NODE, okay)
++#define ZMK_KEYMAP_HAS_REMOTE_SENSORS IS_ENABLED(CONFIG_ZMK_SPLIT_REMOTE_SENSORS)
++#define ZMK_KEYMAP_HAS_SENSORS (ZMK_KEYMAP_HAS_LOCAL_SENSORS || ZMK_KEYMAP_HAS_REMOTE_SENSORS)
+ #define ZMK_KEYMAP_SENSORS_BY_IDX(idx) DT_PHANDLE_BY_IDX(ZMK_KEYMAP_SENSORS_NODE, sensors, idx)
+ 
+-#if ZMK_KEYMAP_HAS_SENSORS
++#if ZMK_KEYMAP_HAS_LOCAL_SENSORS
+ #define ZMK_KEYMAP_SENSORS_LEN DT_PROP_LEN(ZMK_KEYMAP_SENSORS_NODE, sensors)
++#elif ZMK_KEYMAP_HAS_REMOTE_SENSORS
++#define ZMK_KEYMAP_SENSORS_LEN CONFIG_ZMK_SPLIT_REMOTE_SENSOR_COUNT
+ #else
+ #define ZMK_KEYMAP_SENSORS_LEN 0
+ #endif
+diff --git a/app/src/sensors.c b/app/src/sensors.c
+index 90ea1903..d45a4fe8 100644
+--- a/app/src/sensors.c
++++ b/app/src/sensors.c
+@@ -25,6 +25,7 @@ struct sensors_item_cfg {
+     uint8_t sensor_index;
+ };
+ 
++#if ZMK_KEYMAP_HAS_LOCAL_SENSORS
+ #define _SENSOR_ITEM(idx, node)                                                                    \
+     {.dev = DEVICE_DT_GET_OR_NULL(node),                                                           \
+      .trigger = {.type = SENSOR_TRIG_DATA_READY, .chan = SENSOR_CHAN_ROTATION},                    \
+@@ -50,19 +51,29 @@ static struct zmk_sensor_config configs[] = {
+     LISTIFY(ZMK_KEYMAP_SENSORS_LEN, SENSOR_CHILD_DEFAULTS, (, ), 0)
+ #endif
+ };
++#else
++#define REMOTE_SENSOR_CONFIG(idx, arg)                                                             \
++    {.triggers_per_rotation = CONFIG_ZMK_SPLIT_REMOTE_SENSOR_TRIGGERS_PER_ROTATION}
++
++static struct zmk_sensor_config configs[] = {
++    LISTIFY(ZMK_KEYMAP_SENSORS_LEN, REMOTE_SENSOR_CONFIG, (, ), 0)};
++#endif /* ZMK_KEYMAP_HAS_LOCAL_SENSORS */
+ 
++#if ZMK_KEYMAP_HAS_LOCAL_SENSORS
+ static struct sensors_item_cfg sensors[] = {LISTIFY(ZMK_KEYMAP_SENSORS_LEN, SENSOR_ITEM, (, ), 0)};
+ 
+ static ATOMIC_DEFINE(pending_sensors, ZMK_KEYMAP_SENSORS_LEN);
++#endif /* ZMK_KEYMAP_HAS_LOCAL_SENSORS */
+ 
+ const struct zmk_sensor_config *zmk_sensors_get_config_at_index(uint8_t sensor_index) {
+-    if (sensor_index > ARRAY_SIZE(configs)) {
++    if (sensor_index >= ARRAY_SIZE(configs)) {
+         return NULL;
+     }
+ 
+     return &configs[sensor_index];
+ }
+ 
++#if ZMK_KEYMAP_HAS_LOCAL_SENSORS
+ static void trigger_sensor_data_for_position(uint32_t sensor_index) {
+     int err;
+     const struct sensors_item_cfg *item = &sensors[sensor_index];
+@@ -141,5 +152,6 @@ static int zmk_sensors_init(void) {
+ }
+ 
+ SYS_INIT(zmk_sensors_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
++#endif /* ZMK_KEYMAP_HAS_LOCAL_SENSORS */
+ 
+ #endif /* ZMK_KEYMAP_HAS_SENSORS */
