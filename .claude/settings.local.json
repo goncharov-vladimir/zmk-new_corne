@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(west --version)",
+      "Bash(brew install *)",
+      "Bash(west list *)",
+      "Bash(grep -v \"^$\")",
+      "Read(//Applications/ArmGNUToolchain/15.2.rel1/arm-none-eabi/bin/**)",
+      "Read(//Applications/ArmGNUToolchain/15.2.rel1/bin/**)",
+      "Read(//Applications/ArmGNUToolchain/15.2.rel1/**)",
+      "Bash(awk '{print $9, $5, $8}')",
+      "Bash(awk '/default_layer {/,/>;/' config/eyelash_corne.keymap)",
+      "Bash(cd /Users/demomx/Projects/zmk-new_corne *)",
+      "Bash(stty -f /dev/cu.usbmodem2101 115200 raw -echo)",
+      "Bash(timeout 15 cat /dev/cu.usbmodem2101)",
+      "Bash(python3 -c ' *)",
+      "Bash(echo \"=== Что вообще пришло ===\" *)",
+      "Bash(ls /Volumes/NICENANO/ 2>/dev/null && echo \"--- том найден ---\" || echo \"NICENANO не примонтирован — переведи левую в загрузчик \\(двойной reset\\)\")",
+      "Bash(cp -X firmware/left_CALIBRATE.uf2 /Volumes/NICENANO/)",
+      "Bash(sync)",
+      "Bash(exit 0)",
+      "Bash(make build-left *)",
+      "Bash(make build-right *)"
+    ]
+  }
+}

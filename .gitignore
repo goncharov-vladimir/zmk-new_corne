@@ -6,7 +6,7 @@ firmware/
 zmk/
 modules/
 tools/
-zephyr/
+/zephyr/
 zmk-dongle-display/
 .west/
 .cache/

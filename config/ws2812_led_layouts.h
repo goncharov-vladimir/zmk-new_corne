@@ -21,7 +21,7 @@
 #define LED_MAGENTA 0xFF00FF
 #define LED_WHITE   0xFFFFFF
 
-#define WS2812_LAYER_COUNT 4
+#define WS2812_LAYER_COUNT 6
 #define WS2812_GROUP_COUNT 6
 
 #if defined(CONFIG_BOARD_EYELASH_CORNE_LEFT)
@@ -30,14 +30,20 @@ static const uint32_t
         /* Base: no hints. */
         [0] = {LED_OFF, LED_OFF, LED_OFF, LED_OFF, LED_OFF, LED_OFF},
 
+        /* RU: невидимый слой русской раскладки — как Base. */
+        [1] = {LED_OFF, LED_OFF, LED_OFF, LED_OFF, LED_OFF, LED_OFF},
+
         /* Numbers: arrow columns A/S/D/F. */
-        [1] = {LED_OFF, LED_BLUE, LED_BLUE, LED_BLUE, LED_BLUE, LED_OFF},
+        [2] = {LED_OFF, LED_BLUE, LED_BLUE, LED_BLUE, LED_BLUE, LED_OFF},
 
         /* Symbols: columns Q/W/E/R/T. */
-        [2] = {LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_OFF},
+        [3] = {LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_OFF},
+
+        /* Symbols при русской раскладке: как Symbols. */
+        [4] = {LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_OFF},
 
         /* Fn: F1-F5 and Bluetooth profile columns. */
-        [3] = {LED_CYAN, LED_CYAN, LED_CYAN, LED_CYAN, LED_CYAN, LED_OFF},
+        [5] = {LED_CYAN, LED_CYAN, LED_CYAN, LED_CYAN, LED_CYAN, LED_OFF},
     };
 #elif defined(CONFIG_BOARD_EYELASH_CORNE_RIGHT)
 static const uint32_t
@@ -45,14 +51,20 @@ static const uint32_t
         /* Base: no hints. */
         [0] = {LED_OFF, LED_OFF, LED_OFF, LED_OFF, LED_OFF, LED_OFF},
 
+        /* RU: невидимый слой русской раскладки — как Base. */
+        [1] = {LED_OFF, LED_OFF, LED_OFF, LED_OFF, LED_OFF, LED_OFF},
+
         /* Numbers: numeric keypad columns; outer navigation column stays dark. */
-        [1] = {LED_GREEN, LED_GREEN, LED_GREEN, LED_GREEN, LED_GREEN, LED_OFF},
+        [2] = {LED_GREEN, LED_GREEN, LED_GREEN, LED_GREEN, LED_GREEN, LED_OFF},
 
         /* Symbols: every right-hand column contains symbols. */
-        [2] = {LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE},
+        [3] = {LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE},
+
+        /* Symbols при русской раскладке: как Symbols. */
+        [4] = {LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE, LED_ORANGE},
 
         /* Fn: F6-F11 plus system-key columns. */
-        [3] = {LED_CYAN, LED_CYAN, LED_CYAN, LED_CYAN, LED_CYAN, LED_CYAN},
+        [5] = {LED_CYAN, LED_CYAN, LED_CYAN, LED_CYAN, LED_CYAN, LED_CYAN},
     };
 #else
 #error "ws2812_led_layouts.h included for an unsupported board"
